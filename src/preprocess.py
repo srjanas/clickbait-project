@@ -18,6 +18,9 @@ def clean_text(text: str) -> str:
     return text
 
 def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocessing the dataframe
+    """
     df = df.copy()
     df = df.drop_duplicates(subset=["text"])
     df = df.dropna(subset=["text", "label"])

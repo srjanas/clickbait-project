@@ -1,4 +1,4 @@
-import re
+import os
 from collections import Counter
 
 import pandas as pd
@@ -14,10 +14,26 @@ from preprocess import preprocess_dataframe
 # 1) Tokenization + Vocabulary
 # -----------------------------
 def tokenize(text):
+    """
+    Tokenization of text
+    Args:
+        text: input text string
+    Returns:
+        List[str]: List of tokens
+    """
     return text.split()
 
 
 def build_vocab(texts, min_freq=2):
+    """
+    Building vocabulary mapping from tokens to integer indices
+    Tokens that appear less than min_freq times are excluded
+    Args:
+        texts: Strings
+        min_freq: minimum frequency to appear (default is 2)
+    Returns:
+        vocab: Dict
+    """
     counter = Counter()
 
     for text in texts:
@@ -36,10 +52,29 @@ def build_vocab(texts, min_freq=2):
 
 
 def encode_text(text, vocab):
+    """
+    Convert a text string into a sequence of token indices.
+    Tokens not found in vocabulary are mapped to "<UNK">
+
+    Args:
+        text: input text string
+        vocab: Token-to-index mapping
+    
+    Returns:
+        List[int]: List of integer indices representing the text
+    """
     return [vocab.get(token, vocab["<UNK>"]) for token in tokenize(text)]
 
 
 def pad_sequence(seq, max_len, pad_idx=0):
+    """
+    Pad or truncate sequence to maximum length
+
+    Args:
+        seq: input sequence of token indices
+        max_len: desired sequence length
+        pad_idx: index used for padding (default is 0)
+    """
     if len(seq) >= max_len:
         return seq[:max_len]
     return seq + [pad_idx] * (max_len - len(seq))
@@ -49,6 +84,24 @@ def pad_sequence(seq, max_len, pad_idx=0):
 # 2) Dataset
 # -----------------------------
 class ClickbaitDataset(Dataset):
+    """
+    PyTorch Dataset for clickbait classification.
+
+    This dataset encodes text inputs into padded sequences of token indices
+    and pairs them with their corresponding labels.
+
+    Args:
+        texts: Input text samples.
+        labels: Corresponding labels (e.g., 0 or 1).
+        vocab: Token-to-index mapping.
+        max_len: Maximum sequence length for padding/truncation.
+                                Defaults to 20.
+
+    Returns:
+        Tuple: 
+            - Input tensor of shape (max_len,)
+            - Label tensor (scalar)
+    """
     def __init__(self, texts, labels, vocab, max_len=20):
         self.texts = texts.tolist()
         self.labels = labels.tolist()
@@ -72,6 +125,14 @@ class ClickbaitDataset(Dataset):
 # 3) LSTM Classifier
 # -----------------------------
 class ClickbaitLSTM(nn.Module):
+    """
+    LSTM-based neural network for binary text classification.
+    The model consists of:
+    - An embedding layer to convert token indices into dense vectors
+    - An LSTM layer to capture sequential dependencies
+    - A dropout layer for regularization
+    - A fully connected layer for classification
+    """
     def __init__(self, vocab_size, embedding_dim=100, hidden_dim=128, num_layers=1, dropout=0.2):
         super().__init__()
 
@@ -101,6 +162,19 @@ class ClickbaitLSTM(nn.Module):
 # 4) Evaluation
 # -----------------------------
 def evaluate_model(model, data_loader, device, return_preds=False):
+    """
+    Evaluate a trained model on a dataset.
+
+    Computes classification metrics including accuracy, precision, recall,
+    and F1 score.
+
+    Returns:
+        Tuple:
+            - accuracy
+            - precision
+            - recall
+            - f1 score
+    """
     model.eval()
 
     all_preds = []
@@ -132,6 +206,12 @@ def evaluate_model(model, data_loader, device, return_preds=False):
 # 5) Training
 # -----------------------------
 def train_model(model, train_loader, val_loader, epochs=5, lr=0.001):
+    """
+    Train an LSTM model using a training dataset and evaluate on validation data.
+
+    The function performs forward and backward passes, updates model parameters,
+    and reports training loss and validation metrics at each epoch.
+    """
     if torch.cuda.is_available():
         device = torch.device("cuda")
     elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
@@ -179,6 +259,9 @@ def train_model(model, train_loader, val_loader, epochs=5, lr=0.001):
 # 6) Main
 # -----------------------------
 def main():
+    """
+    Main execution function
+    """
     train_df = preprocess_dataframe(pd.read_csv("data/train.csv"))
     val_df = preprocess_dataframe(pd.read_csv("data/validation.csv"))
     test_df = preprocess_dataframe(pd.read_csv("data/test.csv"))
@@ -227,7 +310,7 @@ def main():
     test_acc, test_prec, test_rec, test_f1, test_labels, test_preds = evaluate_model(
         model, test_loader, device, return_preds=True
     )
-    import os
+    
 
     os.makedirs("outputs", exist_ok=True)
 

@@ -1,7 +1,9 @@
 import os
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score, precision_score, recall_score, f1_score
+import seaborn as sns
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 
 
 def compute_metrics(csv_path):
@@ -21,10 +23,14 @@ def compute_metrics(csv_path):
 def save_results_table():
     logreg_metrics = compute_metrics("outputs/logreg_test_predictions.csv")
     lstm_metrics = compute_metrics("outputs/lstm_test_predictions.csv")
+    svm_metrics = compute_metrics("outputs/svm_test_predictions.csv")
+    bert_metrics = compute_metrics("outputs/bert_test_predictions.csv")
 
     results = pd.DataFrame([
         {"Model": "Logistic Regression", **logreg_metrics},
         {"Model": "LSTM", **lstm_metrics},
+        {"Model": "SVM", **svm_metrics},
+        {"Model": "BERT", **bert_metrics}
     ])
 
     os.makedirs("outputs", exist_ok=True)
@@ -42,18 +48,22 @@ def plot_metric_comparison(results):
 
     plt.figure(figsize=(8, 5))
 
-    x = range(len(metrics))
-    width = 0.35
+    x = np.arange(len(metrics))
 
     logreg_values = results.loc[results["Model"] == "Logistic Regression", metrics].values[0]
     lstm_values = results.loc[results["Model"] == "LSTM", metrics].values[0]
+    svm_values = results.loc[results["Model"] == "SVM", metrics].values[0]
+    bert_values = results.loc[results["Model"] == "BERT", metrics].values[0]
 
-    plt.bar([i - width / 2 for i in x], logreg_values, width=width, label="Logistic Regression")
-    plt.bar([i + width / 2 for i in x], lstm_values, width=width, label="LSTM")
+    width = 0.2
+    plt.bar(x - 1.5*width, logreg_values, width, label="Logistic Regression", color="#9ecae1")
+    plt.bar(x - 0.5*width, svm_values, width, label="SVM", color="#3182bd")
+    plt.bar(x + 0.5*width, lstm_values, width, label="LSTM", color="#6baed6")
+    plt.bar(x + 1.5*width, bert_values, width, label="BERT", color="#08519c")
 
     plt.xticks(list(x), metrics)
     plt.ylim(0.85, 1.0)
-    plt.ylabel("Score")
+    plt.ylabel("Score (%)")
     plt.title("Model Performance Comparison")
     plt.legend()
     plt.tight_layout()
@@ -68,14 +78,25 @@ def plot_confusion(csv_path, model_name, output_path):
     df = pd.read_csv(csv_path)
 
     cm = confusion_matrix(df["true_label"], df["pred_label"])
+    labels = ["Not Clickbait (0)", "Clickbait (1)"]
 
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["NOT", "CLICKBAIT"])
-    disp.plot(values_format="d")
+    plt.figure(figsize=(6, 5))
+
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=labels,
+        yticklabels=labels
+    )
+
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
     plt.title(f"Confusion Matrix: {model_name}")
+
     plt.tight_layout()
     plt.savefig(output_path, dpi=300)
-    plt.show()
-
     print(f"Saved confusion matrix to {output_path}")
 
 
@@ -95,6 +116,22 @@ def save_error_examples():
         print(f"{model_name} number of errors: {len(errors)}")
 
 
+def plot_bert_metrics():
+    df = pd.read_csv("outputs/bert_metrics.csv")
+
+    plt.figure(figsize=(9, 5))
+
+    plt.plot(df["epoch"], df["train_loss"], marker='o', label="Train Loss")
+    plt.plot(df["epoch"], df["val_loss"], marker='o', label="Validation Loss")
+
+    plt.title("BERT Loss by Epoch")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.savefig("outputs/bert_metrics.png", dpi=300)
+    plt.show()
+
+
 def main():
     results = save_results_table()
     plot_metric_comparison(results)
@@ -110,6 +147,8 @@ def main():
         "LSTM",
         "outputs/lstm_confusion_matrix.png",
     )
+
+    plot_bert_metrics()
 
     save_error_examples()
 

@@ -1,16 +1,15 @@
+import os
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, classification_report
 from preprocess import preprocess_dataframe
 
-def load_csv(path: str) -> pd.DataFrame:
-    return pd.read_csv(path)
 
 def main():
-    train_df = preprocess_dataframe(load_csv("data/train.csv"))
-    val_df = preprocess_dataframe(load_csv("data/validation.csv"))
-    test_df = preprocess_dataframe(load_csv("data/test.csv"))
+    train_df = preprocess_dataframe(pd.read_csv("data/train.csv"))
+    val_df = preprocess_dataframe(pd.read_csv("data/validation.csv"))
+    test_df = preprocess_dataframe(pd.read_csv("data/test.csv"))
 
     X_train_text = train_df["clean_text"]
     y_train = train_df["label"]
@@ -43,7 +42,6 @@ def main():
     print("\nTest Metrics:")
     print_metrics(y_test, test_preds)
 
-    import os
     os.makedirs("outputs", exist_ok=True)
     pred_df = pd.DataFrame({
     "text": test_df["text"],
@@ -63,11 +61,7 @@ def print_metrics(y_true, y_pred):
     print(f"Recall:    {recall_score(y_true, y_pred):.4f}")
     print(f"F1 Score:  {f1_score(y_true, y_pred):.4f}")
 
-import os
-
 os.makedirs("outputs", exist_ok=True)
-
-
 
 if __name__ == "__main__":
     main()
